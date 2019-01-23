@@ -163,3 +163,68 @@ class Validation:
             [float(i) for i in goeloc]
         except ValueError:
             return [400, 'error', 'coordinates must be floats']
+
+    def validateSignup(self, data):
+        name = data['name']
+        email = data['email']
+        password = data['password']
+        if self.validateKeys(data):
+            res = self.validateKeys(data)
+        elif self.validateValues(data):
+            res = self.validateValues(data)
+        elif Db(db_name).get_user_email(email):
+            res = [403, 'error', 'account already exists, please login']
+        elif Db(db_name).get_user_name(name):
+            res = [409, 'error', 'name conflict, use a different name']
+        elif self.validatePassword(password):
+            res = self.validatePassword(password)
+        elif self.validateEmail(email):
+            res = self.validateEmail(email)
+        elif self.validateName(name):
+            res = self.validateName(name)
+        else:
+            res = Db(db_name).signup(data)
+        return res
+
+    def validateKeys(self, data):
+        for key in ['name', 'email', 'password']:
+            if key not in data:
+                return [400, 'error', f'{key} key missing or incorrect']
+
+    def validateValues(self, data):
+        for field in data:
+            if not data[field]:
+                return [400, 'error', f'please fill in {field}']
+
+    def validatePassword(self, password):
+        if len(password) not in range(6, 13):
+            res = 'password must be to 12 characters long'
+        elif not any(i.islower() for i in password):
+            res = 'password must have atleast one lowercase'
+        elif not any(i.isupper() for i in password):
+            res = 'password must have atleast one uppercase'
+        elif not any(i.isdigit() for i in password):
+            res = 'password must have atleast one digit'
+        elif not set('!@#$%&*') & set(password):
+            res = 'password must have atleast one special character'
+        else:
+            res = None
+        if res:
+            return [400, 'error', res]
+
+    def validateEmail(self, email):
+        required = ['@', '.']
+        if not set(required) & set(email) == set(required):
+            res = [400, 'error', 'invalid email format']
+            a = email.index('@')
+            b = email.rindex('.')
+        elif not 0 < email.index('@') < (email.rindex('.') - 2) < (
+                    len(email) - 3):
+            res = [400, 'error' 'double check your email']
+        else:
+            res = None
+        return res
+
+    def validateName(self, name):
+        if len(name) > 25:
+            return [400, 'error', 'name must be utmost 25 characters long']

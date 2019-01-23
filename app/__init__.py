@@ -7,5 +7,7 @@ def create_app(config_name):
     app = Flask(__name__)
     app.config.from_object(app_config[config_name])
     app.db = Db(db_name)
+    from app.auth import bp, views
+    app.register_blueprint(bp)
 
     return app

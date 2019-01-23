@@ -1,16 +1,19 @@
 import psycopg2
 import os
-from app.models.models import RedFlag
+from app.models.models import RedFlag, User
 import datetime
 import uuid
 
 user = os.getenv('USER', 'postgres')
 password = os.getenv('PASSWORD', 'kukuer1210')
 host = os.getenv('HOST', 'localhost')
-db_name = os.getenv('DATABASE', 'irent')
+db_name = os.getenv('DATABASE', 'ireporter')
 
 
 class Db:
+    long = int(uuid.uuid4())
+    id = str(long)[:4] + str(long)[-4:]
+
     def __init__(self, db_name):
         self.db_name = db_name
         try:
@@ -27,12 +30,12 @@ class Db:
             print(f'database {self.db_name} created')
         except Exception as e:
             print(e)
-        self.connection = psycopg2.connect(
+        connection = psycopg2.connect(
                 f'''dbname = {self.db_name} user = {user} password = {password} host = {host} \
                 port = 5432'''
                 )
-        self.connection.autocommit = True
-        self.cursor = self.connection.cursor()
+        connection.autocommit = True
+        cursor = self.connection.cursor()
         try:
             create_red_flags = 'CREATE TABLE IF NOT EXISTS red_flags(\
                     red_flag_id INT UNIQUE NOT NULL, comment VARCHAR\
@@ -47,6 +50,18 @@ class Db:
         except (Exception, psycopg2.DatabaseError) as error:
             print(error)
 
+        try:
+            create_user_table_query = 'CREATE TABLE IF NOT EXISTS users(\
+            userid INT UNIQUE NOT NULL, name varchar,\
+            email varchar unique not null, password_hash varchar not null,\
+            user_type varchar\
+            )'
+            self.cursor.execute(create_user_table_query)
+            self.save()
+            print('table users created')
+        except Exception as e:
+            print(e)
+
     def save(self):
         self.connection.commit()
 
@@ -54,10 +69,8 @@ class Db:
         others = {
             'status': 'draft', 'videos': '{}', 'images': '{}',
             'comment': ''}
-        long = int(uuid.uuid4())
-        id = str(long)[:4] + str(long)[-4:]
         red_flag = RedFlag(
-            int(id), data['location'], data['createdBy'],
+            int(Db.id), data['location'], data['createdBy'],
             data['title']
             )
         red_flag.__setattr__('createdOn', datetime.datetime.now())
@@ -170,3 +183,48 @@ class Db:
             return red_flag
         except Exception as e:
             print(e)
+
+    def signup(self, data):
+        user = User(Db.id, data['name'], data['email'], data['password'])
+        token = user.generate_token()
+        create_user_query = ' INSERT INTO users (name, userid, email, \
+        password_hash, user_type) VALUES (%s,%s,%s,%s,%s)'
+        self.cursor.execute(
+            create_user_query, (
+                user.name, user.userid, user.email,
+                user.set_password(user.password), user.user_type
+                ))
+        self.save()
+        print('user created')
+        print("user", user.__dict__, "saved to db")
+        return [201, 'data', [{'token': str(token), 'user': user.__repr__()}]]
+
+    def get_user_name(self, name):
+        self.cursor.execute((
+            "SELECT * FROM users where name = %s"), (name,))
+        user = self.cursor.fetchone()
+        return user
+
+    def get_user(self, userid):
+        self.cursor.execute((
+            "SELECT * FROM users where userid = %s"), (userid,))
+        user = self.cursor.fetchone()
+        return self.dict_user(user)
+
+    def get_user_email(self, email):
+        self.cursor.execute((
+            "SELECT * FROM users where email = %s"), (email,))
+        user = self.cursor.fetchone()
+        return user
+
+    @staticmethod
+    def dict_user(tup):
+        user = {}
+        keys = ['userid', 'name', 'email', 'password_hash', 'user_type']
+        try:
+            for key in keys:
+                user[key] = tup[keys.index(key)]
+            res = user
+        except KeyError:
+            res = None
+        return res
