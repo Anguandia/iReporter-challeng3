@@ -27,7 +27,7 @@ class User:
         return generate_password_hash(password)
 
     def validate_password(self, password):
-        password_hash = db.fetch_user_name(self.name)['password_hash']
+        password_hash = self.password
         return check_password_hash(password_hash, password)
 
     def generate_token(self):
@@ -57,28 +57,15 @@ class User:
 
     @staticmethod
     def decode_token(token):
-        if db.check_token(token):
-            result = 'please login'
-        else:
-            try:
-                payload = jwt.decode(
-                    token, 'trying', algorithms=['HS256'], verify=True)
-                result = payload['sub']
-            except jwt.ExpiredSignatureError:
-                result = "Expired token. Please login to get a new token"
-            except jwt.InvalidTokenError:
-                result = "Invalid token. Please register or login"
-            except Exception as error:
-                print(error)
-                result = error
-        return result
-
-    def dict_user(self):
-        user = {}
-        keys = ['userid', 'name', 'email', 'password_hash', 'user_type']
         try:
-            for key in keys:
-                user[key] = object.key
-            return user
-        except Exception as e:
-            print(e)
+            payload = jwt.decode(
+                token, 'trying', algorithms=['HS256'], verify=True)
+            result = payload['sub']
+        except jwt.ExpiredSignatureError:
+            result = "Expired token. Please login to get a new token"
+        except jwt.InvalidTokenError:
+            result = "Invalid token. Please register or login"
+        except Exception as error:
+            print(error)
+            result = error
+        return result
