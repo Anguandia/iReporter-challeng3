@@ -20,6 +20,7 @@ class Testing(Config):
 class Production(Config):
     DEBUG = False
     TESTING = False
+    DDATABASE_URL = 'postgres://zkmhjcntzlzigm:5e1a4dfe4ad76421fc92b9e702f6fb043b4e929767454258195955f2067bee43@ec2-107-21-224-76.compute-1.amazonaws.com:5432/dds37pk9ppk31q'
 
 
 app_config = {
