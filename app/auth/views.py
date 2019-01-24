@@ -1,10 +1,11 @@
 from flask import jsonify, request
 from . import bp
 from app.validation import Validation
-# from app.wrappers import admin_required, auth_required
+from app.wrappers import json_required
 
 
 @bp.route('/signup', methods=['POST'])
+@json_required
 def signup():
     data = request.json
     resp = Validation().validate_signup(data)
@@ -12,6 +13,7 @@ def signup():
 
 
 @bp.route('/login', methods=['POST'])
+@json_required
 def login():
     data = request.json
     resp = Validation().validate_login(data)

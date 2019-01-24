@@ -27,7 +27,6 @@ class Db:
             self.connection.commit()
             self.cursor.close()
             self.connection.close()
-            print(f'database {self.db_name} created')
         except Exception as e:
             print(e)
         connection = psycopg2.connect(
@@ -36,31 +35,23 @@ class Db:
                 )
         connection.autocommit = True
         cursor = self.connection.cursor()
-        try:
-            create_red_flags = 'CREATE TABLE IF NOT EXISTS red_flags(\
-                    red_flag_id INT UNIQUE NOT NULL, comment VARCHAR\
-                    NOT NULL, createdBy INT NOT NULL, createdOn DATE NOT NULL,\
-                    images VARCHAR ARRAY, location VARCHAR NOT NULL, status\
-                    VARCHAR NOT NULL, title VARCHAR NOT NULL, videos VARCHAR\
-                    ARRAY\
-                    )'
-            self.cursor.execute(create_red_flags)
-            self.save()
-            print('table red_flags created')
-        except (Exception, psycopg2.DatabaseError) as error:
-            print(error)
+        create_red_flags = 'CREATE TABLE IF NOT EXISTS red_flags(\
+                red_flag_id INT UNIQUE NOT NULL, comment VARCHAR\
+                NOT NULL, createdBy INT NOT NULL, createdOn DATE NOT NULL,\
+                images VARCHAR ARRAY, location VARCHAR NOT NULL, status\
+                VARCHAR NOT NULL, title VARCHAR NOT NULL, videos VARCHAR\
+                ARRAY\
+                )'
+        self.cursor.execute(create_red_flags)
+        self.save()
 
-        try:
-            create_user_table_query = 'CREATE TABLE IF NOT EXISTS users(\
-            userid INT UNIQUE NOT NULL, name varchar,\
-            email varchar unique not null, password_hash varchar not null,\
-            user_type varchar\
-            )'
-            self.cursor.execute(create_user_table_query)
-            self.save()
-            print('table users created')
-        except Exception as e:
-            print(e)
+        create_user_table_query = 'CREATE TABLE IF NOT EXISTS users(\
+        userid INT UNIQUE NOT NULL, name varchar,\
+        email varchar unique not null, password_hash varchar not null,\
+        user_type varchar\
+        )'
+        self.cursor.execute(create_user_table_query)
+        self.save()
 
     def save(self):
         self.connection.commit()
@@ -91,7 +82,6 @@ class Db:
                     red_flag.title, red_flag.videos
                     ))
             self.save()
-            print("red_flag", red_flag.__dict__, "saved to db")
             return [
                     201, 'data', [{
                         'id': red_flag.red_flag_id,
@@ -99,7 +89,6 @@ class Db:
                         }]
                 ]
         except (Exception, psycopg2.IntegrityError) as error:
-            print("Failed to create red_flag:", error)
             res = [500, 'error', str(error)]
         return res
 
@@ -205,11 +194,17 @@ class Db:
         user = self.cursor.fetchone()
         return user
 
-    def get_user(self, userid):
-        self.cursor.execute((
-            "SELECT * FROM users where userid = %s"), (userid,))
+    def get_user(self, key, value):
+        if key == 'userid':
+            query = '''SELECT * FROM users where userid = %s'''
+        elif key == 'name':
+            query = '''SELECT * FROM users where name = %s'''
+        else:
+            query = '''SELECT * FROM users where email = %s'''
+        self.cursor.execute((query), (value,))
         user = self.cursor.fetchone()
-        return self.dict_user(user)
+        if user:
+            return self.dict_user(user)
 
     def get_user_email(self, email):
         self.cursor.execute((
@@ -221,10 +216,33 @@ class Db:
     def dict_user(tup):
         user = {}
         keys = ['userid', 'name', 'email', 'password_hash', 'user_type']
+        for key in keys:
+            user[key] = tup[keys.index(key)]
+        return user
+
+    def check_user(self, data, identity):
         try:
-            for key in keys:
-                user[key] = tup[keys.index(key)]
-            res = user
-        except KeyError:
-            res = None
+            user = self.to_object(self.get_user(identity, data['identity']))
+            if user and user.validate_password(data['password']):
+                res = self.login(user)
+            else:
+                res = [401, 'error', 'wrong password']
+        except Exception:
+            res = [404, 'error', f'no user with {identity} {data["identity"]}']
         return res
+
+    def login(self, user):
+        token = user.generate_token()
+        if token:
+            res = [200, 'data', [
+                {'token': str(token), 'user': user.__repr__()}
+                ]]
+        else:
+            res = [500, 'error', 'internal error, please contact support']
+        return res
+
+    def to_object(self, dic):
+        user = User(
+            dic['userid'], dic['name'], dic['email'], dic['password_hash']
+            )
+        return user

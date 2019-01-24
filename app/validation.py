@@ -23,11 +23,11 @@ class Validation:
                     f'{field} should be of type {self.data_types[field]}'
                     ]
             elif field in ['images', 'videos']:
-                res = self.validatePictures(data[field])
+                res = self.validate_pictures(data[field])
         if res:
             return res
 
-    def validatePictures(self, pics):
+    def validate_pictures(self, pics):
         for pic in pics:
             if not isinstance(pic, str):
                 return [
@@ -35,12 +35,12 @@ class Validation:
                     f"'{pic}' image path should be a string"
                     ]
 
-    def validateRoute(self, resource):
+    def validate_route(self, resource):
         if resource != 'red_flags':
             res = [400, 'error', f'wrong url, check \'{resource}\'']
             return res
 
-    def validateBasics(self, data):
+    def validate_basics(self, data):
         for field in ['location', 'comment', 'createdBy', 'title']:
             if field not in data:
                 return [
@@ -50,7 +50,7 @@ class Validation:
             elif not data[field]:
                 return [400, 'error', 'please submit {}'.format(field)]
 
-    def validateDuplicate(self, data):
+    def validate_duplicate(self, data):
         flags = Db(db_name).get_red_flags()[2]
         for flag in flags:
             if data['location'] in flag['location'] and data['title']\
@@ -62,56 +62,56 @@ class Validation:
                         ]
                     ]
 
-    def validateDescriptive(self, data):
+    def validate_descriptive(self, data):
         for field in ['location', 'comment', 'title']:
-            if field and not self.validateInt(
+            if field and not self.validate_int(
                     data[field]):
                 return [
                     400, 'error', f'{field} must be descriptive'
                     ]
 
-    def validateNew(self, data):
-        if self.validateBasics(data):
-            result = self.validateBasics(data)
-        elif self.validateDescriptive(data):
-            result = self.validateDescriptive(data)
+    def validate_new(self, data):
+        if self.validate_basics(data):
+            result = self.validate_basics(data)
+        elif self.validate_descriptive(data):
+            result = self.validate_descriptive(data)
         elif self.bad_type(data):
             result = self.bad_type(data)
-        elif self.validateDuplicate(data):
-            result = self.validateDuplicate(data)
+        elif self.validate_duplicate(data):
+            result = self.validate_duplicate(data)
         else:
             result = Db(db_name).create(data)
         return result
 
-    def validateInt(self, value):
+    def validate_int(self, value):
         try:
             int(value)
         except ValueError:
             return 'id must be a number'
 
-    def validateEdit(self, data, red_flag_id, field):
-        if self.validateField(field):
-            result = self.validateField(field)
-        elif self.validateEditable(red_flag_id):
-            result = self.validateEditable(red_flag_id)
-        elif self.validateData(field, data):
-            result = self.validateData(field, data)
-        elif field == 'status' and self.validateStatus(data):
-            result = self.validateStatus(data)
+    def validate_edit(self, data, red_flag_id, field):
+        if self.validate_field(field):
+            result = self.validate_field(field)
+        elif self.validate_editable(red_flag_id):
+            result = self.validate_editable(red_flag_id)
+        elif self.validate_data(field, data):
+            result = self.validate_data(field, data)
+        elif field == 'status' and self.validate_status(data):
+            result = self.validate_status(data)
         elif field == 'location':
-            result = self.validateGeoloc(red_flag_id, data)
+            result = self.validate_geoloc(red_flag_id, data)
         else:
             result = Db(db_name).edit(red_flag_id, data[field], field)
         return result
 
-    def validateStatus(self, data):
+    def validate_status(self, data):
         if data['status'] not in [
                 'under investigation', 'resolved', 'rejected']:
             return [400, 'error', 'invalid status']
 
     '''to be editable, target must exist and not be in status 'resolved' or
     'rejected'''
-    def validateEditable(self, id):
+    def validate_editable(self, id):
         # initialize return value to none
         ret = None
         # check if update target is available
@@ -126,11 +126,11 @@ class Validation:
         return ret
 
     # check if end point specified correctly
-    def validateField(self, field):
+    def validate_field(self, field):
         if field not in ['location', 'comment', 'status']:
             return [400, 'error', f'wrong endpoint \'{field}\'']
 
-    def validateData(self, field, data):
+    def validate_data(self, field, data):
         if field not in data:
             result = [
               400, 'error',
@@ -143,60 +143,55 @@ class Validation:
             result = None
         return result
 
-    def validateGeoloc(self, red_flag_id, data):
+    def validate_geoloc(self, red_flag_id, data):
         d = data['location'].split(',')
         if ',' not in data['location']:
             result = [
                 400, 'error',
                 "location must be of format'latitude <comma> longitude'"
                 ]
-        elif self.validateGeolocType(d):
-            result = self.validateGeolocType(d)
+        elif self.validate_geoloc_type(d):
+            result = self.validate_geoloc_type(d)
         else:
             result = Db(db_name).edit(red_flag_id, {
                 'location': 'geolocation ' + f'N: {d[0]}, E: {d[1]}'},
                 'location')
         return result
 
-    def validateGeolocType(self, goeloc):
+    def validate_geoloc_type(self, goeloc):
         try:
             [float(i) for i in goeloc]
         except ValueError:
             return [400, 'error', 'coordinates must be floats']
 
-    def validateSignup(self, data):
-        name = data['name']
-        email = data['email']
-        password = data['password']
-        if self.validateKeys(data):
-            res = self.validateKeys(data)
-        elif self.validateValues(data):
-            res = self.validateValues(data)
-        elif Db(db_name).get_user_email(email):
+    def validate_signup(self, data):
+        if self.validate_signup_data(data):
+            res = self.validate_signup_data(data)
+        elif Db(db_name).get_user('email', data['email']):
             res = [403, 'error', 'account already exists, please login']
-        elif Db(db_name).get_user_name(name):
+        elif Db(db_name).get_user('name', data['name']):
             res = [409, 'error', 'name conflict, use a different name']
-        elif self.validatePassword(password):
-            res = self.validatePassword(password)
-        elif self.validateEmail(email):
-            res = self.validateEmail(email)
-        elif self.validateName(name):
-            res = self.validateName(name)
+        elif self.validate_password(data['password']):
+            res = self.validate_password(data['password'])
+        elif self.validate_email(data['email']):
+            res = self.validate_email(data['email'])
+        elif self.validate_name(data['name']):
+            res = self.validate_name(data['name'])
         else:
             res = Db(db_name).signup(data)
         return res
 
-    def validateKeys(self, data):
+    def validate_signup_data(self, data):
         for key in ['name', 'email', 'password']:
+            res = None
             if key not in data:
-                return [400, 'error', f'{key} key missing or incorrect']
+                res = f'{key} key missing or incorrect'
+            elif not data[key]:
+                res = f'please fill in {key}'
+            if res:
+                return [400, 'error', res]
 
-    def validateValues(self, data):
-        for field in data:
-            if not data[field]:
-                return [400, 'error', f'please fill in {field}']
-
-    def validatePassword(self, password):
+    def validate_password(self, password):
         if len(password) not in range(6, 13):
             res = 'password must be to 12 characters long'
         elif not any(i.islower() for i in password):
@@ -212,19 +207,36 @@ class Validation:
         if res:
             return [400, 'error', res]
 
-    def validateEmail(self, email):
+    def validate_email(self, email):
         required = ['@', '.']
+        res = None
         if not set(required) & set(email) == set(required):
-            res = [400, 'error', 'invalid email format']
-            a = email.index('@')
-            b = email.rindex('.')
+            res = 'invalid email format'
         elif not 0 < email.index('@') < (email.rindex('.') - 2) < (
                     len(email) - 3):
-            res = [400, 'error' 'double check your email']
-        else:
-            res = None
-        return res
+            res = 'double check your email'
+        if res:
+            return [400, 'error', res]
 
-    def validateName(self, name):
+    def validate_name(self, name):
         if len(name) > 25:
             return [400, 'error', 'name must be utmost 25 characters long']
+
+    def validate_login(self, data):
+        if self.validate_login_data(data):
+            res = self.validate_login_data(data)
+        elif not self.validate_email(data['identity']):
+            res = Db(db_name).check_user(data, 'email')
+        else:
+            res = Db(db_name).check_user(data, 'name')
+        return res
+
+    def validate_login_data(self, data):
+        for key in ['identity', 'password']:
+            res = None
+            if key not in data:
+                res = f'{key} key missing'
+            elif not data[key]:
+                res = f'please provide {key} value'
+            if res:
+                return [400, 'error', res]
