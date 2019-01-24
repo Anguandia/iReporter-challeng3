@@ -23,15 +23,12 @@ def admin_required(f):
         if auth_header:
             token = auth_header.split(" ")[1]
             key = User.decode_token(token)
-            #if isinstance(key, int):
             if Db(db_name).get_user('userid', key)['user_type'] == 'admin':
                 v = f(*args, **kwargs)
             else:
                 return jsonify(
                         {'msg': 'this action requores admin previledges'}
                         ), 403
-            #else:
-             #   v = jsonify({'msg': User.decode_token(token)}), 401
         else:
             v = jsonify({'msg': 'please login or signup'}), 401
         return v

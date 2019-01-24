@@ -4,10 +4,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 
 class RedFlag:
-    def __init__(self, red_flag_id, location, createdBy, title):
+    def __init__(self, red_flag_id, location, title):
         self.red_flag_id = red_flag_id
         self.location = location
-        self.createdBy = createdBy
         self.title = title
 
 
