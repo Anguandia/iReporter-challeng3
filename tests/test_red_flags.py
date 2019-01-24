@@ -2,14 +2,14 @@ import pytest
 import json
 from tests.test_data import dat
 from app.db import Db
-from app.views import views
+from app.red_flags import views
+from app import app
 
 db_name = 'test_db'
 
 
 @pytest.fixture(scope='function')
 def client():
-    app = views.app
     test_client = app.test_client()
     Db(db_name).cursor.execute('delete from red_flags')
     cxt = app.app_context()
