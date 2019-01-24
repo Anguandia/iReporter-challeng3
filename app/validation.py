@@ -41,7 +41,7 @@ class Validation:
             return res
 
     def validate_basics(self, data):
-        for field in ['location', 'comment', 'createdBy', 'title']:
+        for field in ['location', 'title']:
             if field not in data:
                 return [
                     400, 'error',

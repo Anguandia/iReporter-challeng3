@@ -4,17 +4,16 @@ import os
 class Config:
     DEBUG = False
     CSRF_ENABLED = True
+    DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 class Development(Config):
     DEBUG = True
-    red_flags = {}
 
 
 class Testing(Config):
     TESTING = True
     DEBUG = True
-    red_flags = {}
 
 
 class Production(Config):

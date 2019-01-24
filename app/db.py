@@ -57,14 +57,15 @@ class Db:
         self.connection.commit()
 
     def create(self, data):
+        createdBy = User.decode_token(data['token'])
         others = {
             'status': 'draft', 'videos': '{}', 'images': '{}',
             'comment': ''}
         red_flag = RedFlag(
-            int(Db.id), data['location'], data['createdBy'],
-            data['title']
+            int(Db.id), data['location'], data['title']
             )
         red_flag.__setattr__('createdOn', datetime.datetime.now())
+        red_flag.__setattr__('createdBy', createdBy)
         for key in others:
             if key in data:
                 red_flag.__setattr__(key, data[key])
@@ -101,7 +102,6 @@ class Db:
             red_flags = [Db.dict_red_flag(red_flag) for red_flag in flags]
             res = res = [200, 'data', red_flags]
         except Exception as error:
-            print(error)
             res = [500, 'error', 'internal error, please contact support']
         return res
 
@@ -113,7 +113,6 @@ class Db:
             red_flag = self.cursor.fetchone()
             res = [200, 'data', [self.dict_red_flag(red_flag)]]
         except Exception as error:
-            print(error)
             res = [500, 'error', 'internal error, please contact support']
         return res
 
@@ -157,8 +156,6 @@ class Db:
             res = [404, 'error', 'red flag not found']
         except (Exception, psycopg2.DatabaseError) as error:
             res = [500, 'error', 'internal error, please contact support']
-            print("Error deleting", error)
-        print(res)
         return res
 
     @staticmethod
